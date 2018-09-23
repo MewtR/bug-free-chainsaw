@@ -1,5 +1,7 @@
+#!/usr/bin/python3
 import argparse
 import libhttpc
+import re
 
 def commandDescriptions():
    return """
@@ -39,7 +41,11 @@ if args.command == 'help':
     else:
         parser.print_help()
 elif args.command == 'get':
-    print ("GET used")
+    regexp = '(?:https?://)?(?P<www>w{3}\.)?(?P<host>[^:/ ]+).?'
+    url = re.search(regexp, args.URL).group('host')
+    print (url)
+    libhttpc.get(url, args.verbose)
+    #print ("GET used")
     #parser_get.print_help()
 elif args.command == 'post':
     print ("POST used")
