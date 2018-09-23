@@ -8,12 +8,13 @@ import re
 host = 'httpbin.org'
 port = 80
 
-def get(host, verbose, path='/status/418'):
+def get(host, path, verbose):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         s.connect((host, 80))
-        request = 'GET '+ path +' HTTP/1.0\r\n'
+        request = 'GET /'+ path +' HTTP/1.0\r\n'
         request += 'Host: '+ host +'\r\n\r\n'
+        #print (request)
         s.sendall((request).encode("utf-8"))
         #response = s.recv(len(request), socket.MSG_WAITALL)
         response = s.recv(4096, socket.MSG_WAITALL)

@@ -41,10 +41,13 @@ if args.command == 'help':
     else:
         parser.print_help()
 elif args.command == 'get':
-    regexp = '(?:https?://)?(?P<www>w{3}\.)?(?P<host>[^:/ ]+).?'
+    #Match http(s) 0 or 1 times then match www 0 or 1 times
+    #then match any char except : or / one or more times
+    #then match one or 0 / followed by any char 0 or more times (match path group once or 0 times at end of string)
+    regexp = '(?:https?://)?(?P<www>w{3}\.)?(?P<host>[^:/ ]+).?/?(?P<path>.*)?$'
     url = re.search(regexp, args.URL).group('host')
-    print (url)
-    libhttpc.get(url, args.verbose)
+    path = re.search(regexp, args.URL).group('path')
+    libhttpc.get(url, path,args.verbose)
     #print ("GET used")
     #parser_get.print_help()
 elif args.command == 'post':
