@@ -21,13 +21,19 @@ parser_get.add_argument('-v','--verbose', action='store_true', help='Prints the 
 
 #append option to allow the flage multiple times
 #metavar changes the description of the argument for the flag
-parser_get.add_argument('-h', nargs=1, action='append', metavar='key:value',help='Associates headers to HTTP Request with the format \'key:value\'.')
+parser_get.add_argument('-h',  action='append', metavar='key:value',help='Associates headers to HTTP Request with the format \'key:value\'.')
 parser_get.add_argument('URL')
 
 # create the parser for the post command
-parser_post = subparsers.add_parser('post', prog='httpc post')
-parser_post.add_argument('--opt3', action='store_true')
-parser_post.add_argument('--opt4', action='store_true')
+parser_post = subparsers.add_parser('post', prog='httpc post', add_help=False)
+parser_post.add_argument('-v','--verbose', action='store_true', help='Prints the detail of the response such as protocol, status, and headers.')
+parser_post.add_argument('-h', action='append', metavar='key:value',help='Associates headers to HTTP Request with the format \'key:value\'.')
+parser_post.add_argument('URL')
+
+#Mutually exclusive group for post -d and -f options
+post_group = parser_post.add_mutually_exclusive_group()
+post_group.add_argument('-d', metavar='inline-data', help='Associates an inline data to the body HTTP POST request.')
+post_group.add_argument('-f', metavar='file', help='Associates the content of a file to the body HTTP POST request.')
 
 # create the parser for the help command
 parser_help = subparsers.add_parser('help', help=argparse.SUPPRESS)
@@ -48,16 +54,27 @@ elif args.command == 'get':
     #then match any char except : or / one or more times
     #then match one or 0 / followed by any char 0 or more times (match path group once or 0 times at end of string)
     regexp = '(?:https?://)?(?P<www>w{3}\.)?(?P<host>[^:/ ]+).?/?(?P<path>.*)?$'
-    url = re.search(regexp, args.URL).group('host')
+    host = re.search(regexp, args.URL).group('host')
     path = re.search(regexp, args.URL).group('path')
-    print (args.h[0].__class__)
-    libhttpc.get(url, path, args.verbose, args.h)
+    #print (args.h[0].__class__)
+    libhttpc.get(host, path, args.verbose, args.h)
     #print ("GET used")
     #parser_get.print_help()
 elif args.command == 'post':
-    print ("POST used")
+    #print ("POST used")
+    regexp = '(?:https?://)?(?P<www>w{3}\.)?(?P<host>[^:/ ]+).?/?(?P<path>.*)?$'
+    host = re.search(regexp, args.URL).group('host')
+    path = re.search(regexp, args.URL).group('path')
+    #print (args.h[0].__class__)
+    if args.f:
+        with open(args.f, 'r') as myfile:
+            data=myfile.read()
+    else:
+        data = args.d
+    print ("data is: "+data)
+    libhttpc.post(host, path, args.verbose, args.h, data)
     #parser_post.print_help()
-else:
-    parser.print_help()
+#else:
+    #parser.print_help()
 
 
