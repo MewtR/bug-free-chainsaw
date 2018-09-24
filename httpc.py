@@ -41,7 +41,7 @@ parser_help.add_argument('method', choices=['get','post',''], default='', nargs=
 
 
 args = parser.parse_args()
-print (args)
+#print (args)
 if args.command == 'help':
     if args.method == 'get':
         parser_get.print_help()
@@ -49,32 +49,26 @@ if args.command == 'help':
         parser_post.print_help()
     else:
         parser.print_help()
-elif args.command == 'get':
+if hasattr(args, 'URL'):
     #Match http(s) 0 or 1 times then match www 0 or 1 times
     #then match any char except : or / one or more times
     #then match one or 0 / followed by any char 0 or more times (match path group once or 0 times at end of string)
     regexp = '(?:https?://)?(?P<www>w{3}\.)?(?P<host>[^:/ ]+).?/?(?P<path>.*)?$'
     host = re.search(regexp, args.URL).group('host')
     path = re.search(regexp, args.URL).group('path')
+    if args.command == 'get':
     #print (args.h[0].__class__)
-    libhttpc.get(host, path, args.verbose, args.h)
+        libhttpc.makeRequest(host, 'GET /'+path, args.verbose, args.h)
     #print ("GET used")
     #parser_get.print_help()
-elif args.command == 'post':
-    #print ("POST used")
-    regexp = '(?:https?://)?(?P<www>w{3}\.)?(?P<host>[^:/ ]+).?/?(?P<path>.*)?$'
-    host = re.search(regexp, args.URL).group('host')
-    path = re.search(regexp, args.URL).group('path')
-    #print (args.h[0].__class__)
-    if args.f:
-        with open(args.f, 'r') as myfile:
-            data=myfile.read()
-    else:
-        data = args.d
-    print ("data is: "+data)
-    libhttpc.post(host, path, args.verbose, args.h, data)
+    elif args.command == 'post':
+        try:
+            with open(args.f, 'r') as myfile:
+                data=myfile.read()
+        except:
+            data = args.d
+        libhttpc.makeRequest(host, 'POST /'+path, args.verbose, args.h, data)
     #parser_post.print_help()
-#else:
-    #parser.print_help()
-
-
+else:
+    #print ("Exception caught")
+    parser.print_help()
