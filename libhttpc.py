@@ -8,13 +8,20 @@ import re
 host = 'httpbin.org'
 port = 80
 
-def get(host, path, verbose):
+def get(host, path, verbose, headers=[]):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         s.connect((host, 80))
         request = 'GET /'+ path +' HTTP/1.0\r\n'
-        request += 'Host: '+ host +'\r\n\r\n'
-        #print (request)
+        #request += 'Host: '+ host +'\r\n\r\n'
+        request += 'Host: '+ host +'\r\n'
+        if headers:
+            for h in headers:
+                #h is a list -> first element is what we want
+                request+= h[0]+'\r\n'
+        #End of request
+        request+='\r\n'
+        print (request)
         s.sendall((request).encode("utf-8"))
         #response = s.recv(len(request), socket.MSG_WAITALL)
         response = s.recv(4096, socket.MSG_WAITALL)

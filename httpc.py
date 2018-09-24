@@ -18,7 +18,10 @@ subparsers = parser.add_subparsers(dest='command', help=argparse.SUPPRESS)
 # create the parser for the get command
 parser_get = subparsers.add_parser('get', prog='httpc get', add_help=False)
 parser_get.add_argument('-v','--verbose', action='store_true', help='Prints the detail of the response such as protocol, status, and headers.')
-parser_get.add_argument('-h',nargs=1, metavar='key:value',help='Associates headers to HTTP Request with the format \'key:value\'.')
+
+#append option to allow the flage multiple times
+#metavar changes the description of the argument for the flag
+parser_get.add_argument('-h', nargs=1, action='append', metavar='key:value',help='Associates headers to HTTP Request with the format \'key:value\'.')
 parser_get.add_argument('URL')
 
 # create the parser for the post command
@@ -47,10 +50,14 @@ elif args.command == 'get':
     regexp = '(?:https?://)?(?P<www>w{3}\.)?(?P<host>[^:/ ]+).?/?(?P<path>.*)?$'
     url = re.search(regexp, args.URL).group('host')
     path = re.search(regexp, args.URL).group('path')
-    libhttpc.get(url, path,args.verbose)
+    print (args.h[0].__class__)
+    libhttpc.get(url, path, args.verbose, args.h)
     #print ("GET used")
     #parser_get.print_help()
 elif args.command == 'post':
     print ("POST used")
     #parser_post.print_help()
+else:
+    parser.print_help()
+
 
