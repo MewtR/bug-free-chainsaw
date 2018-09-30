@@ -20,7 +20,8 @@ def makeRequest(host, path, verbose, headers=[], data=''):
                 request+=data
                 request+='\r\n'
         s.sendall((request).encode("utf-8"))
-        response = s.recv(4096, socket.MSG_WAITALL)
+        #response = s.recv(4096, socket.MSG_WAITALL)
+        response = recv_all(s)
         response = response.decode("utf-8")
         (header, body) = response.split('\r\n\r\n')
         if (verbose):
@@ -30,3 +31,17 @@ def makeRequest(host, path, verbose, headers=[], data=''):
         sys.stdout.write(body)
     finally:
         s.close()
+
+
+def recv_all(s):
+    #socket.settimeout(2)
+    response = b''
+    data = b''
+    while True:
+        data = s.recv(4096)
+        response+=data
+        if not data:
+            break
+    return response
+
+
