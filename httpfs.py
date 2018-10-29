@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import argparse
+import libhttpfs
 
 
 #parser = argparse.ArgumentParser(prog='httpfs', description='httpfs is a simple file server.', formatter_class=argparse.RawTextHelpFormatter)
@@ -10,8 +11,5 @@ parser.add_argument('-p', '--port', type=int, default=8080, help='Specifies the 
 
 args = parser.parse_args()
 
-print ("Namespace : " )
-print (args)
-print ("Directory is :"+args.directory)
-print ("Port is :"+ str(args.port))
+libhttpfs.run_server('127.0.0.1', args.port, args.directory)
 

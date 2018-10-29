@@ -3,10 +3,10 @@ import argparse
 import sys
 import re
 
-def makeRequest(host, path, verbose, headers=[], data=''):
+def makeRequest(host, port, path, verbose, headers=[], data=''):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        s.connect((host, 80))
+        s.connect((host, port))
         request = path +' HTTP/1.0\r\n'
         request += 'Host: '+ host +'\r\n'
         request += 'Content-length: '+ str(len(data))+'\r\n'
@@ -23,13 +23,17 @@ def makeRequest(host, path, verbose, headers=[], data=''):
         #response = s.recv(4096, socket.MSG_WAITALL)
         response = recv_all(s)
         response = response.decode("utf-8")
-        (header, body) = response.split('\r\n\r\n')
-        #body = response.split('\r\n\r\n')
-        if (verbose):
-            sys.stdout.write(request)
-            #sys.stdout.write(header)
-            sys.stdout.write('\r\n\r\n')
-        sys.stdout.write(body)
+        try:
+            (header, body) = response.split('\r\n\r\n')
+            #body = response.split('\r\n\r\n')
+            if (verbose):
+                sys.stdout.write(request)
+                sys.stdout.write(header)
+                sys.stdout.write('\r\n\r\n')
+            sys.stdout.write(body)
+        except ValueError as e:
+            sys.stdout.write(str(e))
+            sys.stdout.write(response)
     finally:
         s.close()
 
@@ -44,5 +48,3 @@ def recv_all(s):
         if not data:
             break
     return response
-
-
