@@ -5,7 +5,7 @@ import re
 import threading
 import os
 
-def run_server(host, port, directory = './'):
+def run_server(host, port, directory = './', verbose = False):
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         listener.bind((host, port))
@@ -13,18 +13,28 @@ def run_server(host, port, directory = './'):
         print('Listening on port '+ str(port))
         while True:
             conn, addr = listener.accept()
-            #threading.Thread(target=handle_client, args=(conn, addr)).start()
-            handle_client(conn, addr, directory)
+            handle_client(conn, addr, directory, verbose)
     finally:
         listener.close()
         
 def generate_headers(status):
-    headers = 'HTTP/1.0 '+ status+'\r\n'
+    if status == 500:
+        message = 'Internal Server Error'
+    elif status == 400:
+        message = 'Bad Request'
+    elif status == 403:
+        message = 'Forbidden'
+    elif status == 404:
+        message = 'Not Found'
+    else:
+        status = 200
+        message = 'OK'
+    headers = 'HTTP/1.0 '+ str(status)+' '+message+'\r\n'
     headers += 'Connection: close'
     headers +='\r\n\r\n'
     return headers.encode("utf-8")
 
-def handle_client(conn, addr, directory):
+def handle_client(conn, addr, directory, verbose):
     data = b''
     received_data = b''
     response = ''
@@ -38,25 +48,39 @@ def handle_client(conn, addr, directory):
                 break
             #print (data.decode("utf-8"))
         received_data = received_data.decode("utf-8")
+        if (verbose):
+            print (received_data)
         if 'GET' in received_data:
-            response = do_GET(received_data, conn, addr, directory)
+            response = do_GET(received_data, conn, addr, directory, verbose)
         elif 'POST' in received_data:
-            response = do_POST(received_data, conn, addr, directory)
+            response = do_POST(received_data, conn, addr, directory, verbose)
         else:
             response = 'Bad Request'
-        print (received_data)
             #conn.sendall(data)
-        conn.sendall(generate_headers(str(200)))
+        if 'access' in response:
+            conn.sendall(generate_headers(403))
+        elif 'exist' in response:
+            conn.sendall(generate_headers(404))
+        elif 'Request' in response:
+            conn.sendall(generate_headers(400))
+        elif 'Unable' in response:
+            conn.sendall(generate_headers(500))
+        else:
+            conn.sendall(generate_headers(200))
         conn.sendall(response.encode("utf-8"))
         conn.sendall('\r\n'.encode("utf-8"))
     finally:
-        print ("Closing connection with client")
+        if (verbose):
+            print ("Closing connection with client")
         conn.close()
 
-def do_POST(received_data, conn, addr, directory):
+def do_POST(received_data, conn, addr, directory, verbose):
     response = ''
     file_requested = received_data.split(' ')[1]
     files_in_working_dir = os.listdir(directory)
+    if (verbose):
+        print ("Files in working directory are: ")
+        print (files_in_working_dir)
     body = received_data.split('\r\n\r\n')[1]
     if file_requested == '/':
         response = 'Bad Request'
@@ -64,10 +88,12 @@ def do_POST(received_data, conn, addr, directory):
     else:
         check_permissions = file_requested.split('/')
         if len(check_permissions) > 2:
-            print (check_permissions)
             response = 'You do not have access to this directory'
             return response
         f = re.findall('/(.*)', file_requested)[0]
+        if (verbose):
+            print ("file requested is : ")
+            print (f)
         if (os.path.isfile(directory+'/'+f) and (f in files_in_working_dir)):
             try:
                 #open file for writing
@@ -94,12 +120,13 @@ def do_POST(received_data, conn, addr, directory):
                 response += str(e)
             return response
 
-def do_GET(received_data, conn, addr, directory):
+def do_GET(received_data, conn, addr, directory, verbose):
     response = ''
     file_requested = received_data.split(' ')[1]
     files_in_working_dir = os.listdir(directory)
-    print ("Files in working directory are: ")
-    print (files_in_working_dir)
+    if (verbose):
+        print ("Files in working directory are: ")
+        print (files_in_working_dir)
     #List files in current working directory
     if file_requested == '/':
         for f in files_in_working_dir:
@@ -110,12 +137,12 @@ def do_GET(received_data, conn, addr, directory):
     else:
         check_permissions = file_requested.split('/')
         if len(check_permissions) > 2:
-            print (check_permissions)
             response = 'You do not have access to this directory'
             return response
         f = re.findall('/(.*)', file_requested)[0]
-        print ("file is : ")
-        print (f)
+        if (verbose):
+            print ("file requested is : ")
+            print (f)
         if (os.path.isfile(directory+'/'+f) and (f in files_in_working_dir)):
             try:
                 with open(directory+'/'+f, 'r') as myfile:

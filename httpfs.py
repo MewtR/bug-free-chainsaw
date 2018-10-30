@@ -12,5 +12,5 @@ parser.add_argument('-p', '--port', type=int, default=8080, help='Specifies the 
 args = parser.parse_args()
 
 print (args)
-libhttpfs.run_server('127.0.0.1', args.port, args.directory)
+libhttpfs.run_server('127.0.0.1', args.port, args.directory, args.verbose)
 
