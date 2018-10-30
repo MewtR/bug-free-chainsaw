@@ -27,7 +27,7 @@ def makeRequest(host, port, path, verbose, headers=[], data=''):
             (header, body) = response.split('\r\n\r\n')
             #body = response.split('\r\n\r\n')
             if (verbose):
-                sys.stdout.write(request)
+                sys.stdout.write(request+'\n')
                 sys.stdout.write(header)
                 sys.stdout.write('\r\n\r\n')
             sys.stdout.write(body)

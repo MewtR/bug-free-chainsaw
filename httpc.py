@@ -34,7 +34,7 @@ parser_post.add_argument('-p', '--port', type=int, default=80)
 
 #Mutually exclusive group for post -d and -f options
 post_group = parser_post.add_mutually_exclusive_group()
-post_group.add_argument('-d', metavar='inline-data', help='Associates an inline data to the body HTTP POST request.')
+post_group.add_argument('-d',type=str, default = '', metavar='inline-data', help='Associates an inline data to the body HTTP POST request.')
 post_group.add_argument('-f', metavar='file', help='Associates the content of a file to the body HTTP POST request.')
 
 # create the parser for the help command

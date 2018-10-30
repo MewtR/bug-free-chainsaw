@@ -37,9 +37,13 @@ def handle_client(conn, addr, directory):
             if '\r\n\r\n' in received_data.decode("utf-8"):
                 break
             #print (data.decode("utf-8"))
-        if 'GET' in received_data.decode("utf-8"):
-            received_data = received_data.decode("utf-8")
+        received_data = received_data.decode("utf-8")
+        if 'GET' in received_data:
             response = do_GET(received_data, conn, addr, directory)
+        elif 'POST' in received_data:
+            response = do_POST(received_data, conn, addr, directory)
+        else:
+            response = 'Bad Request'
         print (received_data)
             #conn.sendall(data)
         conn.sendall(generate_headers(str(200)))
@@ -48,6 +52,47 @@ def handle_client(conn, addr, directory):
     finally:
         print ("Closing connection with client")
         conn.close()
+
+def do_POST(received_data, conn, addr, directory):
+    response = ''
+    file_requested = received_data.split(' ')[1]
+    files_in_working_dir = os.listdir(directory)
+    body = received_data.split('\r\n\r\n')[1]
+    if file_requested == '/':
+        response = 'Bad Request'
+        return response
+    else:
+        check_permissions = file_requested.split('/')
+        if len(check_permissions) > 2:
+            print (check_permissions)
+            response = 'You do not have access to this directory'
+            return response
+        f = re.findall('/(.*)', file_requested)[0]
+        if (os.path.isfile(directory+'/'+f) and (f in files_in_working_dir)):
+            try:
+                #open file for writing
+                with open(directory+'/'+f, 'w') as myfile:
+                    myfile.write(body)
+                    response = 'Write to file was successful'
+            except Exception as e:
+                response = 'Unable to write to file'
+                response += '\n'
+                response += str(e)
+            return response
+        elif (os.path.isdir(directory+'/'+f)):
+            response = 'Bad Request'
+            return response
+        else:
+            try:
+                #open file for writing
+                with open(directory+'/'+f, 'w') as myfile:
+                    myfile.write(body)
+                    response = 'Write to file was successful'
+            except Exception as e:
+                response = 'Unable to write to file'
+                response += '\n'
+                response += str(e)
+            return response
 
 def do_GET(received_data, conn, addr, directory):
     response = ''
