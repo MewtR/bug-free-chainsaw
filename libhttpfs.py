@@ -4,18 +4,20 @@ import sys
 import re
 import threading
 import os
+import ipaddress
+from packet import Packet
 
 def run_server(host, port, directory = './', verbose = False):
-    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    conn = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        listener.bind((host, port))
-        listener.listen(5)
+        conn.bind((host, port))
         print('Listening on port '+ str(port))
         while True:
-            conn, addr = listener.accept()
-            handle_client(conn, addr, directory, verbose)
+            #conn, addr = listener.accept()
+            data, sender = conn.recvfrom(1024)
+            handle_client(conn, sender, directory, verbose, data)
     finally:
-        listener.close()
+        conn.close()
         
 def generate_headers(status):
     if status == 500:
@@ -32,49 +34,58 @@ def generate_headers(status):
     headers = 'HTTP/1.0 '+ str(status)+' '+message+'\r\n'
     headers += 'Connection: close'
     headers +='\r\n\r\n'
-    return headers.encode("utf-8")
+    return headers
+    #return headers.encode("utf-8")
 
-def handle_client(conn, addr, directory, verbose):
-    data = b''
-    received_data = b''
-    response = ''
+def handle_client(conn, sender, directory, verbose, data):
     try:
-        while True:
-            data = conn.recv(1024)
-            received_data+=data
-            if not data:
-                break
-            if '\r\n\r\n' in received_data.decode("utf-8"):
-                break
-            #print (data.decode("utf-8"))
-        received_data = received_data.decode("utf-8")
+        p = Packet.from_bytes(data)
+        #Extract client address and port from packet received
+        #When router receives packet changes destination address
+        #to source address so receiver can reply
+        peer_ip = p.peer_ip_addr
+        peer_port = p.peer_port
+        received_data = p.payload.decode("utf-8")
         if (verbose):
             print (received_data)
         if 'GET' in received_data:
-            response = do_GET(received_data, conn, addr, directory, verbose)
+            response = do_GET(received_data, conn, directory, verbose)
         elif 'POST' in received_data:
-            response = do_POST(received_data, conn, addr, directory, verbose)
+            response = do_POST(received_data, conn, directory, verbose)
         else:
             response = 'Bad Request'
             #conn.sendall(data)
         if 'access' in response:
-            conn.sendall(generate_headers(403))
+            #conn.sendall(generate_headers(403))
+            response = generate_headers(403)+response
         elif 'exist' in response:
-            conn.sendall(generate_headers(404))
+            response = generate_headers(404)+response+'\r\n'
+            #conn.sendall(generate_headers(404))
         elif 'Request' in response:
-            conn.sendall(generate_headers(400))
+            response = generate_headers(400)+response+'\r\n'
+            #conn.sendall(generate_headers(400))
         elif 'Unable' in response:
-            conn.sendall(generate_headers(500))
+            response = generate_headers(500)+response+'\r\n'
+            #conn.sendall(generate_headers(500))
         else:
-            conn.sendall(generate_headers(200))
-        conn.sendall(response.encode("utf-8"))
-        conn.sendall('\r\n'.encode("utf-8"))
-    finally:
-        if (verbose):
-            print ("Closing connection with client")
-        conn.close()
+            response = generate_headers(200)+response+'\r\n'
+            #conn.sendall(generate_headers(200))
+        p = Packet(packet_type=0,
+                   seq_num=1,
+                   peer_ip_addr=peer_ip,
+                   peer_port=peer_port,
+                   payload=response.encode("utf-8"))
+        conn.sendto(p.to_bytes(), sender)
+        #conn.sendall(response.encode("utf-8"))
+        #conn.sendall('\r\n'.encode("utf-8"))
+    except Exception as e:
+        print("Error: ", e)
+    #finally:
+    #    if (verbose):
+    #        print ("Closing connection with client")
+    #    conn.close()
 
-def do_POST(received_data, conn, addr, directory, verbose):
+def do_POST(received_data, conn, directory, verbose):
     response = ''
     file_requested = received_data.split(' ')[1]
     files_in_working_dir = os.listdir(directory)
@@ -120,7 +131,7 @@ def do_POST(received_data, conn, addr, directory, verbose):
                 response += str(e)
             return response
 
-def do_GET(received_data, conn, addr, directory, verbose):
+def do_GET(received_data, conn, directory, verbose):
     response = ''
     file_requested = received_data.split(' ')[1]
     files_in_working_dir = os.listdir(directory)
@@ -158,9 +169,3 @@ def do_GET(received_data, conn, addr, directory, verbose):
         else:
             response = 'File does not exist'
             return response
-       # else:
-       #     requested_dir = os.listdir(directory+'/'+f)
-       #     for f in requested_dir:
-       #         response+=f
-       #         response+='\n'
-       #     return response

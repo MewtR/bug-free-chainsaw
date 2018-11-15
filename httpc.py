@@ -24,6 +24,8 @@ parser_get.add_argument('-p', '--port', type=int, default=80)
 #metavar changes the description of the argument for the flag
 parser_get.add_argument('-h',  action='append', metavar='key:value',help='Associates headers to HTTP Request with the format \'key:value\'.')
 parser_get.add_argument('URL')
+parser_get.add_argument("--routerhost", help="router host", default="localhost")
+parser_get.add_argument("--routerport", help="router port", type=int, default=3000)
 
 # create the parser for the post command
 parser_post = subparsers.add_parser('post', prog='httpc post', add_help=False)
@@ -31,6 +33,8 @@ parser_post.add_argument('-v','--verbose', action='store_true', help='Prints the
 parser_post.add_argument('-h', action='append', metavar='key:value',help='Associates headers to HTTP Request with the format \'key:value\'.')
 parser_post.add_argument('URL')
 parser_post.add_argument('-p', '--port', type=int, default=80)
+parser_post.add_argument("--routerhost", help="router host", default="localhost")
+parser_post.add_argument("--routerport", help="router port", type=int, default=3000)
 
 #Mutually exclusive group for post -d and -f options
 post_group = parser_post.add_mutually_exclusive_group()
@@ -60,7 +64,7 @@ if hasattr(args, 'URL'):
     path = re.search(regexp, args.URL).group('path')
     if args.command == 'get':
     #print (args.h[0].__class__)
-        libhttpc.makeRequest(host, args.port,'GET /'+path, args.verbose, args.h)
+        libhttpc.makeRequest(host, args.port,'GET /'+path, args.verbose, args.h, args.routerhost, args.routerport)
     #print ("GET used")
     #parser_get.print_help()
     elif args.command == 'post':
@@ -69,7 +73,7 @@ if hasattr(args, 'URL'):
                 data=myfile.read()
         except:
             data = args.d
-        libhttpc.makeRequest(host, args.port ,'POST /'+path, args.verbose, args.h, data)
+        libhttpc.makeRequest(host, args.port ,'POST /'+path, args.verbose, args.h, args.routerhost, args.routerport, data)
     #parser_post.print_help()
 else:
     #print ("Exception caught")
