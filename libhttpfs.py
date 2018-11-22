@@ -13,7 +13,11 @@ def run_server(host, port, directory = './', verbose = False):
         conn.bind((host, port))
         print('Listening on port '+ str(port))
         while True:
-            #conn, addr = listener.accept()
+            #Three way
+            data, sender = conn.recvfrom(1024)
+            three_way(conn, sender, data, 5)
+            conn.settimeout(None)
+            #Actual data
             data, sender = conn.recvfrom(1024)
             handle_client(conn, sender, directory, verbose, data)
     finally:
@@ -54,36 +58,19 @@ def handle_client(conn, sender, directory, verbose, data):
             response = do_POST(received_data, conn, directory, verbose)
         else:
             response = 'Bad Request'
-            #conn.sendall(data)
         if 'access' in response:
-            #conn.sendall(generate_headers(403))
             response = generate_headers(403)+response
         elif 'exist' in response:
             response = generate_headers(404)+response+'\r\n'
-            #conn.sendall(generate_headers(404))
         elif 'Request' in response:
             response = generate_headers(400)+response+'\r\n'
-            #conn.sendall(generate_headers(400))
         elif 'Unable' in response:
             response = generate_headers(500)+response+'\r\n'
-            #conn.sendall(generate_headers(500))
         else:
             response = generate_headers(200)+response+'\r\n'
-            #conn.sendall(generate_headers(200))
-        p = Packet(packet_type=0,
-                   seq_num=1,
-                   peer_ip_addr=peer_ip,
-                   peer_port=peer_port,
-                   payload=response.encode("utf-8"))
-        conn.sendto(p.to_bytes(), sender)
-        #conn.sendall(response.encode("utf-8"))
-        #conn.sendall('\r\n'.encode("utf-8"))
+        send_packet(conn, peer_ip,peer_port, 4, 1, response, sender)
     except Exception as e:
         print("Error: ", e)
-    #finally:
-    #    if (verbose):
-    #        print ("Closing connection with client")
-    #    conn.close()
 
 def do_POST(received_data, conn, directory, verbose):
     response = ''
@@ -169,3 +156,36 @@ def do_GET(received_data, conn, directory, verbose):
         else:
             response = 'File does not exist'
             return response
+
+
+def send_packet(s, peer_ip, port, packet_type, seq_num, message, sender):
+    p = Packet(packet_type=packet_type,
+                   seq_num=seq_num,
+                   peer_ip_addr=peer_ip,
+                   peer_port=port,
+                   payload=message.encode("utf-8"))
+    s.sendto(p.to_bytes(), sender)
+
+
+#def three_way(s, peer_ip, port, timeout, sender):
+def three_way(s, sender, data, timeout):
+    p = Packet.from_bytes(data)
+    peer_ip = p.peer_ip_addr
+    peer_port = p.peer_port
+    if (p.packet_type != 0):
+        print ("Need to initiate communcation with three_way!")
+        return
+    try:
+        #Send SYN-ACK
+        send_packet(s, peer_ip, peer_port, 1, 1, '', sender)
+        s.settimeout(timeout)
+        response, sender = s.recvfrom(1024)
+        p = Packet.from_bytes(response)
+        if (p.packet_type == 2):
+            # Received ACK -> done
+            print('Three way handshake complete ! Communcation can start !')
+            return
+        else:
+            print('Reject this packet somehow')
+    except socket.timeout:
+        print('No response after {}s'.format(timeout))
