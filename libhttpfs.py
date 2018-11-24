@@ -20,7 +20,7 @@ def run_server(host, port, directory = './', verbose = False):
         while True:
             #Three way start
             data, sender = conn.recvfrom(1024)
-            three_way(conn, sender, data, 1)
+            three_way(conn, sender, data, 5)
             conn.settimeout(None)
             #Actual data
             data, sender = conn.recvfrom(1024)
@@ -80,7 +80,7 @@ def handle_client(conn, sender, directory, verbose, data):
         while True:
             try:
                 send_packet(conn, peer_ip,peer_port, 4, sequence_number_to_send, response, sender)
-                conn.settimeout(1)
+                conn.settimeout(5)
                 #Three way end
                 tempdata, sender = conn.recvfrom(1024)
                 z = Packet.from_bytes(tempdata)
@@ -89,7 +89,7 @@ def handle_client(conn, sender, directory, verbose, data):
                     continue # Send it again
                 expected_sequence_number = 0
                 sequence_number_to_send = 1
-                three_way(conn, sender, data, 1)
+                three_way(conn, sender, tempdata, 5)
                 conn.settimeout(None)
                 expected_sequence_number = 0
                 sequence_number_to_send = 1
@@ -201,6 +201,9 @@ def three_way(s, sender, data, timeout):
     peer_ip = p.peer_ip_addr
     peer_port = p.peer_port
     if (p.packet_type != 0):
+        print('Router: ', sender)
+        print('Packet: ', p)
+        print('Payload: ' + p.payload.decode("utf-8"))
         print ("Need to initiate communcation with three_way!")
         return
     if (p.seq_num != expected_sequence_number):
