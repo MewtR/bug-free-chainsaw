@@ -7,19 +7,26 @@ import os
 import ipaddress
 from packet import Packet
 
+expected_sequence_number = 0
+sequence_number_to_send = 1
+
 def run_server(host, port, directory = './', verbose = False):
+    global expected_sequence_number 
+    global sequence_number_to_send 
     conn = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         conn.bind((host, port))
         print('Listening on port '+ str(port))
         while True:
-            #Three way
+            #Three way start
             data, sender = conn.recvfrom(1024)
-            three_way(conn, sender, data, 5)
+            three_way(conn, sender, data, 1)
             conn.settimeout(None)
             #Actual data
             data, sender = conn.recvfrom(1024)
             handle_client(conn, sender, directory, verbose, data)
+            expected_sequence_number = 0
+            sequence_number_to_send = 1
     finally:
         conn.close()
         
@@ -42,6 +49,8 @@ def generate_headers(status):
     #return headers.encode("utf-8")
 
 def handle_client(conn, sender, directory, verbose, data):
+    global expected_sequence_number
+    global sequence_number_to_send 
     try:
         p = Packet.from_bytes(data)
         #Extract client address and port from packet received
@@ -68,7 +77,25 @@ def handle_client(conn, sender, directory, verbose, data):
             response = generate_headers(500)+response+'\r\n'
         else:
             response = generate_headers(200)+response+'\r\n'
-        send_packet(conn, peer_ip,peer_port, 4, 1, response, sender)
+        while True:
+            try:
+                send_packet(conn, peer_ip,peer_port, 4, sequence_number_to_send, response, sender)
+                conn.settimeout(1)
+                #Three way end
+                tempdata, sender = conn.recvfrom(1024)
+                z = Packet.from_bytes(tempdata)
+                if (z.seq_num == 4): #Means client did not get response
+                    print ('Resending response')
+                    continue # Send it again
+                expected_sequence_number = 0
+                sequence_number_to_send = 1
+                three_way(conn, sender, data, 1)
+                conn.settimeout(None)
+                expected_sequence_number = 0
+                sequence_number_to_send = 1
+                break
+            except socket.timeout:
+                pass
     except Exception as e:
         print("Error: ", e)
 
@@ -167,25 +194,40 @@ def send_packet(s, peer_ip, port, packet_type, seq_num, message, sender):
     s.sendto(p.to_bytes(), sender)
 
 
-#def three_way(s, peer_ip, port, timeout, sender):
 def three_way(s, sender, data, timeout):
+    global expected_sequence_number 
+    global sequence_number_to_send 
     p = Packet.from_bytes(data)
     peer_ip = p.peer_ip_addr
     peer_port = p.peer_port
     if (p.packet_type != 0):
         print ("Need to initiate communcation with three_way!")
         return
-    try:
-        #Send SYN-ACK
-        send_packet(s, peer_ip, peer_port, 1, 1, '', sender)
-        s.settimeout(timeout)
-        response, sender = s.recvfrom(1024)
-        p = Packet.from_bytes(response)
-        if (p.packet_type == 2):
-            # Received ACK -> done
-            print('Three way handshake complete ! Communcation can start !')
-            return
-        else:
-            print('Reject this packet somehow')
-    except socket.timeout:
-        print('No response after {}s'.format(timeout))
+    if (p.seq_num != expected_sequence_number):
+        print ("Wrong packet received")
+        print('sequence_number_to_send : ', sequence_number_to_send)
+        print('expected_sequence_number : ', expected_sequence_number)
+        return
+    expected_sequence_number =+2
+    print('Router: ', sender)
+    print('Packet: ', p)
+    print('Payload: ' + p.payload.decode("utf-8"))
+    while True:
+        try:
+            #Send SYN-ACK
+            send_packet(s, peer_ip, peer_port, 1, sequence_number_to_send, '', sender)
+            print('Sending packet')
+            s.settimeout(timeout)
+            response, sender = s.recvfrom(1024)
+            p = Packet.from_bytes(response)
+            if (p.packet_type == 2 and p.seq_num == expected_sequence_number):
+                # Received ACK -> done
+                print('Three way handshake complete !')
+                sequence_number_to_send +=2
+                return
+            else:
+                continue
+                print('Reject this packet somehow')
+        except socket.timeout:
+            pass
+            #print('No response after {}s'.format(timeout))
