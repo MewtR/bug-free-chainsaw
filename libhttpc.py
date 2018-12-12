@@ -35,6 +35,8 @@ def three_way(s, peer_ip, port, timeout, router_addr, router_port):
             s.settimeout(timeout)
             response, sender = s.recvfrom(1024)
             p = Packet.from_bytes(response)
+            if (p.packet_type != 1):
+                continue
             print('Router: ', sender)
             print('Packet: ', p)
             print('Payload: ' + p.payload.decode("utf-8"))
@@ -53,7 +55,7 @@ def makeRequest(host, port, path, verbose, headers=[], router_addr='localhost', 
     global sequence_number_to_send 
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     peer_ip = ipaddress.ip_address(socket.gethostbyname(host))
-    timeout = 5
+    timeout = 1
     three_way(s, peer_ip, port, timeout, router_addr, router_port)
     while True:
         try:
@@ -71,7 +73,6 @@ def makeRequest(host, port, path, verbose, headers=[], router_addr='localhost', 
                     message+=data
             #Send data packet: type 4
             send_packet(s, peer_ip, port, 4, sequence_number_to_send, message, router_addr, router_port)
-            print('Sending data packet(Request)')
             s.settimeout(timeout)
             print('Waiting for a response')
             response, sender = s.recvfrom(1024)

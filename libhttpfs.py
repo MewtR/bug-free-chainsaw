@@ -20,7 +20,7 @@ def run_server(host, port, directory = './', verbose = False):
         while True:
             #Three way start
             data, sender = conn.recvfrom(1024)
-            three_way(conn, sender, data, 5)
+            three_way(conn, sender, data, 1)
             conn.settimeout(None)
             #Actual data
             data, sender = conn.recvfrom(1024)
@@ -80,7 +80,7 @@ def handle_client(conn, sender, directory, verbose, data):
         while True:
             try:
                 send_packet(conn, peer_ip,peer_port, 4, sequence_number_to_send, response, sender)
-                conn.settimeout(5)
+                conn.settimeout(1)
                 #Three way end
                 tempdata, sender = conn.recvfrom(1024)
                 z = Packet.from_bytes(tempdata)
@@ -89,7 +89,7 @@ def handle_client(conn, sender, directory, verbose, data):
                     continue # Send it again
                 expected_sequence_number = 0
                 sequence_number_to_send = 1
-                three_way(conn, sender, tempdata, 5)
+                three_way(conn, sender, tempdata, 1)
                 conn.settimeout(None)
                 expected_sequence_number = 0
                 sequence_number_to_send = 1
